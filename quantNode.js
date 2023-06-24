@@ -8,6 +8,12 @@ import fetch from 'node-fetch';
 //npm i puppeteer-core for web scraping
 //일반 puppeteer과 다르게 크롬 브라우저를 자동 설치하지 않는다.
 import puppeteer from 'puppeteer-core';
+//esm에서는 __dirname 사용이 안됨. 그래서 추가한 모듈
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 //json 형태로 파싱
 app.use(express.json());

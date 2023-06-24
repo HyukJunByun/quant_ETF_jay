@@ -11,7 +11,7 @@ import puppeteer from 'puppeteer-core';
 
 //json 형태로 파싱
 app.use(express.json());
-app.use(express.urlencoded({extended : true}));
+//app.use(express.urlencoded({extended : true}));
 
 //메인 홈페이지 처음 실행 시
 app.get("/", (req, res) => {
@@ -37,6 +37,9 @@ app.post("/", async function(req, res){
     let lastYear= year - 1;                               //1년 전
     let lastToday= lastYear + month + day;               //1년 전 오늘
 
+//test
+    console.log('20220620 꼴?= ', lastToday);
+
     //api 제대로 불러오는지 확인
     function checkApi(response){
         if(response.ok){
@@ -50,25 +53,37 @@ app.post("/", async function(req, res){
     //스위칭 전략2 실행
     if(switchTwoCheckbox === 'on'){
         //전년 동기 대비 미국 소매 판매 지수 변화율의 3개월 평균의 3개월 방향성
-        //저번달, 저저번달, 저저저번달, 저저저저번달, 저저저저저번달, 저저저저저저번달
-        let months= [];
+        //6= 저번달, 저저번달, 저저저번달, 저저저저번달, 저저저저저번달, 저저저저저저번달
+        let YearMonths= [];
+        //위에거 2023-06 꼴의 1년전 -> 2022-06
+        let lastYearMonths= [];
         for(let z= 0; z < 6; z++){
             if(parseInt(month) - z - 1 <= 0){
-                let lastMonth= ('0' + (12 + month - z - 1)).slice(-2);
-                months.push(lastMonth);
+                let beforeMonth= ('0' + (12 + month - z - 1)).slice(-2);
+                let beforeYearMonth= lastYear + '-' + beforeMonth;
+                YearMonths.push(beforeYearMonth);
+                //정해진 달의 1년 전
+                let beforeLastYearMonth= (lastYear - 1) + '-' + beforeMonth;
+                lastYearMonths.push(beforeLastYearMonth);
             }else{
-                months.push(('0' + (month - z - 1)).slice(-2));
+                let beforeMonth= ('0' + (month - z - 1)).slice(-2);
+                let beforeYearMonth= year + '-' + beforeMonth;
+                YearMonths.push(beforeYearMonth);
+                //정해진 달의 1년 전
+                let beforeLastYearMonth= (year - 1) + '-' + beforeMonth;
+                lastYearMonths.push(beforeLastYearMonth);
             }
         }
-        //2023-06 꼴 만드는 함수
-        function dateForCensus(a, b){
-            return a + '-' + b;
-        }
+
         //미국 소매지수 데이터. 올해 + 직년 전부 
         let marts= {};
-        for(let v=0; v < months.length; v++){
-            //올해 미국 소매지수 가져오기
-            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${dateForCensus(year, months[v])}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
+
+//test
+        console.log('2023-06= ', lastYearMonths);
+
+        for(let v=0; v < YearMonths.length; v++){
+            //올해 미국 소매지수 가져오기(이번달 데이터는 없음. 저번달부터 집계)
+            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${YearMonths[v]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
             .then(checkApi)
             .then(response => {
                 return response.json();
@@ -81,7 +96,7 @@ app.post("/", async function(req, res){
                 console.log("there is a problem: " + err.message);
             });
             //작년 미국 소매지수 가져오기
-            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${dateForCensus(lastYear, months[v])}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
+            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${lastYearMonths[v]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
             .then(checkApi)
             .then(response => {
                 return response.json();
@@ -94,20 +109,31 @@ app.post("/", async function(req, res){
                 console.log("there is a problem: " + err.message);
             });
         }
+
+//test
+        console.log('미국 소매지수 저번달부터 6개월 * 1년 전= ', marts);
+
         //전년 동기 대비 미국 소매 판매지수 변화량 구하기
         let yoy= [];
-        for(let h=0; h < months.length; h++){
-            let thisYearMarts = marts[dateForCensus(year, months[h])];
-            let lastYearMarts = marts[dateForCensus(lastYear, months[h])];
+        for(let h=0; h < YearMonths.length; h++){
+            let thisYearMarts = marts[YearMonths[h]];
+            let lastYearMarts = marts[lastYearMonths[h]];
             let yoyMarts= thisYearMarts / lastYearMarts - 1;
             yoy.push(yoyMarts);
         }
+
+//test
+        console.log('미국 소매지수 전년 대비 변화율= ', yoy);
+
         //위에서 구한것의 3개월 평균. 총 4개 원소
         let avr3= [];
         for(let t=0; t < 4; t++){
             let nowAvr= (yoy[t] + yoy[t+1] + yoy[t+2]) / 3;
             avr3.push(nowAvr);
         }
+//test
+        console.log('위에거 3개월 평균= ', avr3);
+
         //위에서 구한것이 3개월 연속 같은 방향성인지 확인.
         function toward(a){
             return avr3[a]/avr3[a+1] - 1;
@@ -116,6 +142,7 @@ app.post("/", async function(req, res){
             //ism pmi지수 3개월치 계산. puppeteer이 속도 늦추기 때문에, 애초에 미국 소매 판매지수 만족 안하면 실행 안하게 설계
             (async () => {
             const browser = await puppeteer.launch({
+//(중요) 여기 수정 필요!
                 executablePath: 'C:/Program Files/Google/Chrome/Application/대충 브레이브 브라우저.exe' 
             });
             const page = await browser.newPage();
@@ -136,39 +163,55 @@ app.post("/", async function(req, res){
             await page.waitForSelector('.noWrap');
             //pmi 지수 전부 가져오기
             const tableList= await page.$$('.noWrap');
+
+//test
+            console.log('pmi 지수 길게 가져옴= ', tableList);
+
             //올해 pmi. 내림차순
-            let thisPmi= [];
+            let thisPmi= {};
             //1년 전 pmi
-            let lastPmi= [];
+            let lastPmi= {};
             //가장 최신 pmi가 발표 안된 일정일 경우. '\u00A0' = &nbsp;
             if(await tableList[0].evaluate(el => el.textContent) === '\u00A0'){
-                for(let l= 0; l < 7; l++){
+                for(let l= 0; l < YearMonths.length; l++){
                     let smallPmi= await tableList[2*l + 2].evaluate(el => el.textContent); 
-                    thisPmi.push(smallPmi);
+                    thisPmi[YearMonths[l]]= smallPmi;
                     let lastSmallPmi= await tableList[2*l + 2 + 24].evaluate(el => el.textContent);
-                    lastPmi.push(lastSmallPmi); 
+                    lastPmi[lastYearMonths[l]]= lastSmallPmi; 
                 }
             }else{
-                for(let l= 0; l < 7; l++){
+                for(let l= 0; l < YearMonths.length; l++){
                     let smallPmi= await tableList[2*l].evaluate(el => el.textContent); 
-                    thisPmi.push(smallPmi);
+                    thisPmi[YearMonths[l]]= smallPmi;
                     let lastSmallPmi= await tableList[2*l + 24].evaluate(el => el.textContent);
-                    lastPmi.push(lastSmallPmi); 
+                    lastPmi[lastYearMonths[l]]= lastSmallPmi;
                 }
             };
             //puppeteer 종료
             await browser.close();
 
+//test
+            console.log('올해 pmi= ', thisPmi);
+            console.log('1년 전 pmi= ', lastPmi);
+
             //전년 대비 변화율 -> thisPmi 
-            for(let m= 0; m < 7; m++){
-                thisPmi[m]= parseFloat(thisPmi[m]) / parseFloat(lastPmi[m]) - 1.0;
+            for(let m= 0; m < YearMonths.length; m++){
+                thisPmi[YearMonths[m]]= parseFloat(thisPmi[YearMonths[m]]) / parseFloat(lastPmi[lastYearMonths[m]]) - 1.0;
             }
+
+//test
+            console.log('전년 대비 변화율= ', thisPmi);
+
             //위의 3개월 평균. 4개 원소
             let avr3Pmi= [];
             for(let y=0; y < 4; y++){
-                let avrP= (thisPmi[y] + thisPmi[y+1] + thisPmi[y+2]) / 3;
+                let avrP= (thisPmi[YearMonths[y]] + thisPmi[YearMonths[y+1]] + thisPmi[YearMonths[y+2]]) / 3;
                 avr3Pmi.push(avrP);
             }
+
+//test
+            console.log('변화율의 3개월 평균= ', avr3Pmi);
+
             //위에서 구한것이 3개월 연속 같은 방향성인지 확인.
             function towardPmi(a){
                 return avr3Pmi[a]/avr3Pmi[a+1] - 1;
@@ -182,12 +225,16 @@ app.post("/", async function(req, res){
             const endBasDt=`endBasDt=${finalToday}&`;
             if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
                 //공격자산
-                //ETF의 ISIN 코드.(KODEX 200TR, TIGER 차이나CSI300, KODEX 미국S&P 500(H))
-                let attackAssets= ["KR7278530001", "KR7192090009", "KR7449180009"];
+                //ETF의 ISIN 코드. 추후에 sql db 형태로 활용 예정.
+                let attackAssets= [
+                    {ETFname: 'KODEX 200TR', isin: 'KR7278530001'},
+                    {ETFname: 'TIGER 차이나CSI300', isin: 'KR7192090009'},
+                    {ETFname: 'KODEX 미국S&P 500(H)', isin: 'KR7449180009'}
+                ];
                 for(let x=0; x < attackAssets.length; x++){
                     //etf 정보 api 불러오기
                     //서비스키 둘 중에 하나 아직 확정 안남. 테스트 필요.
-                    let summonETF= "serviceKey=" + portalKey + "&" + resultType + beginBasDt + endBasDt + "isinCd=" + attackAssets[x];
+                    let summonETF= "serviceKey=" + portalKey + "&" + resultType + beginBasDt + endBasDt + "isinCd=" + attackAssets[x].isin;
 
                     fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF)
                     .then(checkApi)
@@ -201,37 +248,61 @@ app.post("/", async function(req, res){
                             //200 영업일의 종가를 전부 더한다.
                         }
                         ma200= ma200 / 200; //그걸 200으로 나누면 단순이동평균 완성.
-                        let st_momentum= nowPrice / ma200; //현재 종가/200일 이평 
+                        let st_momentum= nowPrice / ma200; //현재 종가/200일 이평
+                        attackAssets[x]['momentum']= st_momentum;
                     })
                     .catch(err => {
                         console.log("there is a problem: " + err.message);
                     });
                 };
                 //위의 fetch를 공격자산에 대하여 총 3번 반복.
+                //모멘텀 높은 순으로 내림차순 배열
+                attackAssets.sort((a, b) => b['momentum'] - a['momentum']);
+
+//test
+                console.log('공격자산 내림차순(이름, isin, 모멘텀)= ', attackAssets);
+
+                //수익률 탑1 종목 선정
+                fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => {
+                    const resultAttack= `
+                    <fieldset style="background-color: cadetblue;">
+                    <legend><strong>스위칭 전략2:</strong></legend>
+                    <div>
+                        <h4>공격자산 매수<h4>
+                        <h5>1. ${protectAssets[0].ETFname}<h5>
+                    </div>
+                    </fieldset>`;
+                    const search = data.replace('<span id="quantResult2"></span>', resultAttack);
+                    res.send(search); 
+                });
             }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
                 //안전자산
                 //ETF의 ISIN 코드. 추후 sql db를 활용할 예정.
                 let protectAssets= [
-                    {ETFname: 'ACE_국고채10년', isin: 'KR7365780006'},
-                    {ETFname: 'KODEX_국고채_30년액티브', isin:'KR7439870007'},
-                    {ETFname: 'TIGER_단기선진하이일드_합성H', isin:'KR7182490003'},
-                    {ETFname: 'KODEX_단기채권_plus', isin:'KR7214980005'},
-                    {ETFname: 'TIGER_단기통안채', isin:'KR7157450008'},
-                    {ETFname: 'KBSTAR_중기우량회사채', isin:'KR7136340007'},
-                    {ETFname: 'ARIRANG_미국단기우량회사채', isin:'KR7332610005'},
-                    {ETFname: 'SOL_국고채_3년', isin:'KR7438560005'},
-                    {ETFname: 'ARIRANG_미국장기우량회사채', isin:'KR7332620004'}
+                    {ETFname: 'ACE 국고채10년', isin: 'KR7365780006'},
+                    {ETFname: 'KODEX 국고채 30년액티브', isin:'KR7439870007'},
+                    {ETFname: 'TIGER 단기선진하이일드(합성H)', isin:'KR7182490003'},
+                    {ETFname: 'KODEX 단기채권 plus', isin:'KR7214980005'},
+                    {ETFname: 'TIGER 단기통안채', isin:'KR7157450008'},
+                    {ETFname: 'KBSTAR 중기우량회사채', isin:'KR7136340007'},
+                    {ETFname: 'ARIRANG 미국단기우량회사채', isin:'KR7332610005'},
+                    {ETFname: 'SOL 국고채 3년', isin:'KR7438560005'},
+                    {ETFname: 'ARIRANG 미국장기우량회사채', isin:'KR7332620004'}
                 ];
                 //오늘부터 6개월 전
+                let sixToday;
                 if(parseInt(month) - 6 <= 0){
                     let sixMonth= ('0' + (12 + month - 6)).slice(-2);
-                    lastToday= lastYear + sixMonth + day;
+                    sixToday= lastYear + sixMonth + day;
                 }else{
                     let sixMonth= ('0' + (month - 6)).slice(-2);
-                    lastToday= year + sixMonth + day;
+                    sixToday= year + sixMonth + day;
                 }
 
-                beginBasDt=`beginBasDt=${lastToday}&`;
+//test
+                console.log('6개월 전= ', sixToday);
+
+                beginBasDt=`beginBasDt=${sixToday}&`;
                 for(let x= 0; x < protectAssets.length; x++){
                     //etf 정보 api 불러오기
                     //서비스키 encoding ver
@@ -253,6 +324,10 @@ app.post("/", async function(req, res){
                 };
                 //수익률 높은 순으로 내림차순 배열
                 protectAssets.sort((a, b) => b['profit'] - a['profit']);
+
+//test
+                console.log('안전자산 내림차순(이름, isin, 6개월 수익률)= ', protectAssets);
+
                 //수익률 탑3 종목 선정
                 fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => {
                     const resultProtect= `

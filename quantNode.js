@@ -65,14 +65,14 @@ app.post("/", async function(req, res){
         let lastYearMonths= [];
         for(let z= 0; z < 6; z++){
             if(parseInt(month) - z - 1 <= 0){
-                let beforeMonth= ('0' + (12 + month - z - 1)).slice(-2);
+                let beforeMonth= ('0' + (12 + parseInt(month) - z - 1)).slice(-2);
                 let beforeYearMonth= lastYear + '-' + beforeMonth;
                 YearMonths.push(beforeYearMonth);
                 //정해진 달의 1년 전
                 let beforeLastYearMonth= (lastYear - 1) + '-' + beforeMonth;
                 lastYearMonths.push(beforeLastYearMonth);
             }else{
-                let beforeMonth= ('0' + (month - z - 1)).slice(-2);
+                let beforeMonth= ('0' + (parseInt(month) - z - 1)).slice(-2);
                 let beforeYearMonth= year + '-' + beforeMonth;
                 YearMonths.push(beforeYearMonth);
                 //정해진 달의 1년 전
@@ -87,22 +87,9 @@ app.post("/", async function(req, res){
 //test
         console.log('2023-06= ', lastYearMonths);
 
-        for(let v=0; v < YearMonths.length; v++){
+        let somay= (i) =>{
             //올해 미국 소매지수 가져오기(이번달 데이터는 없음. 저번달부터 집계)
-            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${YearMonths[v]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
-            .then(checkApi)
-            .then(response => {
-                return response.json();
-            })
-            .then(json => {
-                //날짜 : 당월 소매지수 데이터 꼴로 객체에 저장.
-                marts[json[1][1]] = json[1][0];
-            })
-            .catch(err => {
-                console.log("there is a problem: " + err.message);
-            });
-            //작년 미국 소매지수 가져오기
-            fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${lastYearMonths[v]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
+            return fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${YearMonths[i]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
             .then(checkApi)
             .then(response => {
                 return response.json();
@@ -115,6 +102,27 @@ app.post("/", async function(req, res){
                 console.log("there is a problem: " + err.message);
             });
         }
+        let lastSomay= (i) =>{
+            //작년 미국 소매지수 가져오기
+            return fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${lastYearMonths[i]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`)
+            .then(checkApi)
+            .then(response => {
+                return response.json();
+            })
+            .then(json => {
+                //날짜 : 당월 소매지수 데이터 꼴로 객체에 저장.
+                marts[json[1][1]] = json[1][0];
+            })
+            .catch(err => {
+                console.log("there is a problem: " + err.message);
+            });
+        }
+        (async () => {
+            for(let v=0; v < YearMonths.length; v++){
+                await somay(v);
+                await lastSomay(v);
+            }
+        })();
 
 //test
         console.log('미국 소매지수 저번달부터 6개월 * 1년 전= ', marts);

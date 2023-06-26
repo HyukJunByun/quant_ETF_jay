@@ -378,6 +378,6 @@ app.post("/", async function(req, res){
 //app.post    
 });
 
-app.listen(3000, () =>{
-    console.log('여기로 접속하세요! http://localhost:3000/');
+app.listen(7000, () =>{
+    console.log('여기로 접속하세요! http://localhost:7000/');
 });

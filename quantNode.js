@@ -32,10 +32,14 @@ app.post("/", async function(req, res){
     //find by name
     //다양한 전략들.
     const switchTwoCheckbox= req.body.switch2;
+    const laaDualCheck= req.body.laa;
     //공공데이터포털 api 키
     const portalKey= req.body.firstKey;
     //census bureau api 키
     const censusKey= req.body.secondKey;
+
+    //최종 결과 모음
+    let resultETF= [];
 
     //오늘 날짜
     let today = new Date();   
@@ -219,6 +223,7 @@ app.post("/", async function(req, res){
                     console.log(towardPmi(1));
                     console.log(towardPmi(2));
                     if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
+                        stayPosition = false;
                         //공격자산
                         //ETF의 ISIN 코드. 추후에 sql db 형태로 활용 예정.
                         let attackAssets= [
@@ -257,19 +262,16 @@ app.post("/", async function(req, res){
                         console.log('공격자산 내림차순(이름, isin, 모멘텀)= ', attackAssets);
 
                         //수익률 탑1 종목 선정
-                        fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => {
-                            const resultAttack= `
+                        resultETF.push(`
                             <fieldset style="background-color: cadetblue;">
                             <legend><strong>스위칭 전략2:</strong></legend>
                             <div>
                                 <h4>공격자산 매수<h4>
                                 <h5>1. ${protectAssets[0].ETFname}<h5>
                             </div>
-                            </fieldset>`;
-                            const search = data.replace('<span id="quantResult2"></span>', resultAttack);
-                            res.send(search); 
-                        });
+                            </fieldset>`);
                     }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
+                        stayPosition = false;
                         //안전자산
                         //ETF의 ISIN 코드. 추후 sql db를 활용할 예정.
                         let protectAssets= [
@@ -335,8 +337,7 @@ app.post("/", async function(req, res){
                         console.log('안전자산 내림차순(이름, isin, 6개월 수익률)= ', protectAssets);
 
                         //수익률 탑3 종목 선정
-                        fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => {
-                            const resultProtect= `
+                        resultETF.push(`
                             <fieldset style="background-color: cadetblue;">
                             <legend><strong>스위칭 전략2:</strong></legend>
                             <div>
@@ -345,10 +346,7 @@ app.post("/", async function(req, res){
                                 <h5>2. ${protectAssets[1].ETFname}<h5>
                                 <h5>3. ${protectAssets[2].ETFname}<h5>
                             </div>
-                            </fieldset>`;
-                            const search = data.replace('<span id="quantResult2"></span>', resultProtect);
-                            res.send(search); 
-                        });
+                            </fieldset>`);
                     }
                     else{
                         stayPosition = true;
@@ -356,25 +354,31 @@ app.post("/", async function(req, res){
                 };
                 await process();
             };
-            if(stayPosition){
-                fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => {        
+            if(stayPosition){       
         //test
-                    console.log('포지션 유지');
-                    const resultSame= `
-                    <fieldset style="background-color: cadetblue;">
-                    <legend><strong>스위칭 전략2:</strong></legend>
-                    <div>
-                        <h5>기존 포지션 유지<h5>
-                    </div>
-                    </fieldset>`;
-                    const search = data.replace('<span id="quantResult2"></span>', resultSame);
-                    res.send(search); 
-                });
+                console.log('포지션 유지');
+                resultETF.push(`
+                <fieldset style="background-color: cadetblue;">
+                <legend><strong>스위칭 전략2:</strong></legend>
+                <div>
+                    <h5>기존 포지션 유지<h5>
+                </div>
+                </fieldset>`);
             };
         //(async() => {
         })();
     //스위치전략2.checked
     };
+    if(laaDualCheck === 'on'){
+        //laa + dual 전략
+    };
+
+    //최종 결과 출력
+    fs.readFile(__dirname + '/index.html', 'utf8', (err, data) => { 
+        const rrresult = resultETF.join('');      
+        const search = data.replace('<span id="quantResult"></span>', rrresult);
+        res.send(search); 
+    });
 //app.post    
 });
 

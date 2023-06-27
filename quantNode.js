@@ -262,12 +262,12 @@ app.post("/", async function(req, res){
                 try{
                     let response= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
                     let json= await response.json();
-                    let nowPrice= parseInt(json.response.body.items.item[0].clpr);  //공공데이터 포털 참고. 당일 종가
+                    let nowPrice= parseInt(json.body.items.item[0].clpr);  //공공데이터 포털 참고. 당일 종가
                     let ma200 = 0; //200일 단순이동평균 (지수이동평균 아님.)
 //test
-                    console.log(nowPrice);
+                    console.log('nowPrice= ', nowPrice);
                     for(let i= 0; i < 200; i++){
-                        ma200 += parseInt(json.response.body.items.item[i].clpr);
+                        ma200 += parseInt(json.body.items.item[i].clpr);
                         //200 영업일의 종가를 전부 더한다.
                     }
                     ma200= ma200 / 200; //그걸 200으로 나누면 단순이동평균 완성.
@@ -291,7 +291,7 @@ app.post("/", async function(req, res){
                 <legend><strong>스위칭 전략2:</strong></legend>
                 <div>
                     <h4>공격자산 매수<h4>
-                    <h5>1. ${protectAssets[0].ETFname}<h5>
+                    <h5>1. ${attackAssets[0].ETFname}<h5>
                 </div>
                 </fieldset>`);
         };
@@ -330,11 +330,11 @@ app.post("/", async function(req, res){
                 try{
                     let response= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
                     let json= await response.json();
-                    let nowPrice= parseInt(json.response.body.items.item[0].clpr);  //공공데이터 포털 참고. 당일 종가
-//test
-                    console.log('안전자산 6개월 전 종가= ', nowPrice);
+                    let nowPrice= parseInt(json.body.items.item[0].clpr);  //공공데이터 포털 참고. 당일 종가
                     //6개월 전 종가
-                    let sixMonthPrice= parseInt(json.response.body.items.item[parseInt(json.response.body.totalCount) - 1].clpr);
+                    let sixMonthPrice= parseInt(json.body.items.item[parseInt(json.response.body.totalCount) - 1].clpr);
+//test                    
+                    console.log('안전자산 6개월 전 종가= ', nowPrice);
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;
                 }
                 catch(err){

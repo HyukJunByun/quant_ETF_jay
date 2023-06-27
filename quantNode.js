@@ -192,7 +192,7 @@ app.post("/", async function(req, res){
             let browser = await puppeteer.launch({
     //(중요) 여기 기기마다 다름!!
                 //웹페이지 시각적으로 보고 싶으면 활성화
-                headless: false,
+                //headless: false,
                 executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'  
             });
             let page = await browser.newPage();

@@ -372,7 +372,7 @@ app.post("/", async function(req, res){
         };
 
         //1달치 데이터 불러오기 + 최신 데이터 1달치 제거
-        async function oneMonthSomay(){
+        async function oneMonthSomay(recentYM, recentLYM){
             //소매 판매지수 1개월 더 과거(6 + n 개월) 데이터 가져오기 -> marts
             await checkSomay(YearMonths.length - 1);  
             delete marts[recentYM];
@@ -391,7 +391,7 @@ app.post("/", async function(req, res){
     //test
             console.log('전년 대비 소매판매지수 변화량의 3개월 평균: ', avr3);
         };
-        async function oneMonthPmi(){
+        async function oneMonthPmi(recentYM, recentLYM){
             let browser = await puppeteer.launch({
     //(중요) 여기 수정 필요!
                 //웹페이지 시각적으로 보고 싶으면 활성화
@@ -445,7 +445,7 @@ app.post("/", async function(req, res){
         };
 
         //2개 지수 동시에 확인.
-        Promise.all([collectPmi(), collectSomay()])
+        await Promise.all([collectPmi(), collectSomay()])
         .then(clear => {
 //test
             checkIfAllSame();
@@ -463,62 +463,60 @@ app.post("/", async function(req, res){
                 //지표 전부다 음수면 안전자산
                 calculateProtect()
                 .then(() => stayPosition = false);
-            }else{
-                //while 문 반복 횟수 체크
-                let counter = 0;
-                while(stayPosition){       
-                    //포지션 유지일 경우 1개월씩 과거로 돌아가서 공격 또는 안전자산 선택할때까지 (pmi + 미국 소매 판매 지수) 반복
-                    //단, 효율성을 위해서 과거 1개월 데이터 추가, 최신 1개월 데이터 제거 형식으로 반복.
-                    console.log(finalToday, '= 포지션 유지');
-
-                    //1개월 전 날짜
-                    today.setMonth(today.getMonth() - counter - 1);   
-                    year = today.getFullYear();                       //년
-                    month = ('0' + (today.getMonth() + 1)).slice(-2); //0x 월
-                    day = ('0' + today.getDate()).slice(-2);          //0x 일
-                    finalToday = year + month + day;                  //20230620 꼴
-                    lastYear= year - 1;                               //1년 전
-                    lastToday= lastYear + month + day;                //1년 전 오늘
-                    //1개월 더 과거(6 + n 개월) 날짜 추가
-                    createYearMonth(5);
-                    //최신 (n 개월) 날짜 제거
-                    let recentYM= YearMonths.shift();
-                    let recentLYM= lastYearMonths.shift();
-
-                    //2개 지수 동시에 확인.
-                    Promise.all([oneMonthPmi(), oneMonthSomay()])
-                    .then(clear => {
-        //test
-                        checkIfAllSame();
-                        //공공데이터포털 api 불러오기 준비물
-                        //1년 전 부터...
-                        beginBasDt=`beginBasDt=${lastToday}&`;
-                        //오늘까지 데이터
-                        endBasDt=`endBasDt=${finalToday}&`;
-
-                        if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
-                            //지표 전부다 양수면 공격자산
-                            calculateAttack()
-                            .then(() => stayPosition = false);
-                        }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
-                            //지표 전부다 음수면 안전자산
-                            calculateProtect()
-                            .then(() => stayPosition = false);
-                        };
-                        counter += 1;
-                    })
-                    .catch(err => {
-                        console.log('error: ', err);
-                    });
-                //while(stayPosition)
-                };
-            //else(pmi & 소매지수 둘다 음수 또는 양수가 아닐때)
             };
         //then(promise.all)
         })
         .catch(err => {
             console.log('error: ', err);
         });
+        //while 문 반복 횟수 체크
+        let counter = 0;
+        while(stayPosition){       
+            //포지션 유지일 경우 1개월씩 과거로 돌아가서 공격 또는 안전자산 선택할때까지 (pmi + 미국 소매 판매 지수) 반복
+            //단, 효율성을 위해서 과거 1개월 데이터 추가, 최신 1개월 데이터 제거 형식으로 반복.
+            console.log(finalToday, '= 포지션 유지');
+
+            //1개월 전 날짜
+            today.setMonth(today.getMonth() - counter - 1);   
+            year = today.getFullYear();                       //년
+            month = ('0' + (today.getMonth() + 1)).slice(-2); //0x 월
+            day = ('0' + today.getDate()).slice(-2);          //0x 일
+            finalToday = year + month + day;                  //20230620 꼴
+            lastYear= year - 1;                               //1년 전
+            lastToday= lastYear + month + day;                //1년 전 오늘
+            //1개월 더 과거(6 + n 개월) 날짜 추가
+            createYearMonth(5);
+            //최신 (n 개월) 날짜 제거
+            let recentYM= YearMonths.shift();
+            let recentLYM= lastYearMonths.shift();
+
+            //2개 지수 동시에 확인.
+            await Promise.all([oneMonthPmi(recentYM, recentLYM), oneMonthSomay(recentYM, recentLYM)])
+            .then(() => {
+//test
+                checkIfAllSame();
+                //공공데이터포털 api 불러오기 준비물
+                //1년 전 부터...
+                beginBasDt=`beginBasDt=${lastToday}&`;
+                //오늘까지 데이터
+                endBasDt=`endBasDt=${finalToday}&`;
+
+                if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
+                    //지표 전부다 양수면 공격자산
+                    calculateAttack()
+                    .then(() => stayPosition = false);
+                }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
+                    //지표 전부다 음수면 안전자산
+                    calculateProtect()
+                    .then(() => stayPosition = false);
+                };
+                counter += 1;
+            })
+            .catch(err => {
+                console.log('while loop error: ', err);
+            });
+        //while(stayPosition)
+        };
     //스위치전략2.checked
     };
     if(laaDualCheck === 'on'){

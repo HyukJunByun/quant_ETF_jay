@@ -477,7 +477,7 @@ app.post("/", async function(req, res){
             console.log(finalToday, '= 포지션 유지');
 
             //1개월 전 날짜
-            today.setMonth(today.getMonth() - counter - 1);   
+            today.setMonth(today.getMonth() - 1);   
             year = today.getFullYear();                       //년
             month = ('0' + (today.getMonth() + 1)).slice(-2); //0x 월
             day = ('0' + today.getDate()).slice(-2);          //0x 일
@@ -510,11 +510,11 @@ app.post("/", async function(req, res){
                     calculateProtect()
                     .then(() => stayPosition = false);
                 };
-                counter += 1;
             })
             .catch(err => {
                 console.log('while loop error: ', err);
             });
+            counter += 1;
         //while(stayPosition)
         };
     //스위치전략2.checked

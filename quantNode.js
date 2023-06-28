@@ -63,12 +63,12 @@ app.post("/", async function(req, res){
             let beforeYearMonth;
             let beforeLastYearMonth;
             if(parseInt(month) - z - 1 <= 0){
-                beforeMonth= ('0' + (12 + parseInt(month) - z - 1)).slice(-2);
+                let beforeMonth= ('0' + (12 + parseInt(month) - z - 1)).slice(-2);
                 beforeYearMonth= lastYear + '-' + beforeMonth;
                 //정해진 달의 1년 전
                 beforeLastYearMonth= (lastYear - 1) + '-' + beforeMonth;
             }else{
-                beforeMonth= ('0' + (parseInt(month) - z - 1)).slice(-2);
+                let beforeMonth= ('0' + (parseInt(month) - z - 1)).slice(-2);
                 beforeYearMonth= year + '-' + beforeMonth;
                 //정해진 달의 1년 전
                 beforeLastYearMonth= (year - 1) + '-' + beforeMonth;
@@ -101,7 +101,7 @@ app.post("/", async function(req, res){
                 console.log(YearMonths[0], "부터 6개월치 소매판매 데이터 수집");
                 //작년 6개월치 미국 소매판매
                 let response2= await fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=from+${ffromDate}+to+${ttoDate}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`);
-                let json2= await response2.json();          
+                let json2= await response2.json();       
 //불러온 1년전 날짜 체크
                 console.log(lastYearMonths[0], "부터 6개월치 소매판매 데이터 수집");
                 for(let h= 0; h < YearMonths.length; h++){
@@ -181,7 +181,7 @@ app.post("/", async function(req, res){
         //소매지수 데이터 처리하기
         async function collectSomay(){
             //소매지수 데이터를 모아서...
-            checkSomay();
+            await checkSomay();
             console.log('미국 소매판매 지수:', marts);
             //전년 동기 대비 변화량을 구하고...
             for(let h=0; h < YearMonths.length; h++){
@@ -344,7 +344,6 @@ app.post("/", async function(req, res){
                     console.log('안전자산 가격 리스트= ', priceList);
                     let nowPrice= parseInt(priceList[0].clpr);  //공공데이터 포털 참고. 당일 종가
                     console.log('지금 가격= ', nowPrice);
-                    res.send('이건 제대로 나올껄?= ' + nowPrice);
                     //6개월 전 종가
                     let sixMonthPrice= parseInt(priceList[parseInt(json.response.body.totalCount) - 1].clpr);
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;
@@ -399,7 +398,7 @@ app.post("/", async function(req, res){
         };
 
         //1달치 데이터 불러오기 + 최신 데이터 1달치 제거
-        async function oneMonthSomay(){
+        async function oneMonthSomay(recentYM, recentLYM){
             //소매 판매지수 1개월 더 과거(6 + n 개월) 데이터 가져오기 -> marts
             //단, api 트래픽 증가 및 처리 속도 지연 문제로, 한번에 6개월씩 데이터 가져온다.
             //2023-05, 2023-04, 2023-03, 2023-02, 2023-01, 2022-12
@@ -409,8 +408,10 @@ app.post("/", async function(req, res){
             //매번 업데이트 되는 YearMonth의 마지막 원소가 marts에 없다면 6개월 데이터 불러오기
             if(!(YearMonths[YearMonths.length - 1] in marts)){
                 //marts에 업데이트 안된 날짜부터 과거로 6개월 (2023-06꼴)
-                let updateFrom= createYearMonth(5, false);
-                let updateTo= createYearMonth(10, false);
+                let updateFrom= createYearMonth(10, false);
+                let updateTo= createYearMonth(5, false);
+    //test
+                console.log('업데이트할 과거 6개월= ', updateFrom, updateTo);
                 await checkSomay(updateFrom[0], updateTo[0], updateFrom[1], updateTo[1]);  
             };
             delete marts[recentYM];
@@ -521,7 +522,7 @@ app.post("/", async function(req, res){
             let recentLYM= lastYearMonths.shift();
             try{
                 //2개 지수 동시에 확인.
-                await Promise.all([oneMonthPmi(recentYM, recentLYM), oneMonthSomay()]);
+                await Promise.all([oneMonthPmi(recentYM, recentLYM), oneMonthSomay(recentYM, recentLYM)]);
     
 //test
                 checkIfAllSame();

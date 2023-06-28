@@ -91,13 +91,13 @@ app.post("/", async function(req, res){
                 let json= await response.json();
                 marts[json[1][1]] = json[1][0];
 //불러온 날짜 체크
-                console.log(YearMonths[v]);
+                console.log(YearMonths[v], "소매판매 데이터 수집");
                 //작년 미국 소매판매
                 let response2= await fetch(`http://api.census.gov/data/timeseries/eits/marts?get=cell_value&time=${lastYearMonths[v]}&time_slot_id&error_data&seasonally_adj=yes&category_code=44X72&data_type_code=SM&for=us:*&key=${censusKey}`);
                 let json2= await response2.json();
                 marts[json2[1][1]] = json2[1][0];
 //불러온 1년전 날짜 체크
-                console.log(lastYearMonths[v]);
+                console.log(lastYearMonths[v], "소매판매 데이터 수집");
             }
             catch(err){
                 console.log("failed= ", err.message);
@@ -118,7 +118,7 @@ app.post("/", async function(req, res){
 
         //위에서 구한것이 3개월 연속 같은 방향성인지 확인.
         function toward(a){
-            return avr3[a]/avr3[a+1] - 1;
+            return avr3[a] - avr3[a+1];
         };
         //포지션 유지 결론 확인용
         let stayPosition = true;
@@ -145,7 +145,7 @@ app.post("/", async function(req, res){
 
         //위에서 구한것이 3개월 연속 같은 방향성인지 확인.
         function towardPmi(a){
-            return avr3Pmi[a]/avr3Pmi[a+1] - 1;
+            return avr3Pmi[a] - avr3Pmi[a+1];
         }
         //공공데이터포털 api 불러오기 준비물
         //데이터를 json 형태로 반환
@@ -258,11 +258,11 @@ app.post("/", async function(req, res){
             for(let x=0; x < attackAssets.length; x++){
                 //etf 정보 api 불러오기
                 //서비스키 둘 중에 하나 아직 확정 안남. 테스트 필요.
-                let summonETF= "serviceKey=" + portalKey + "&" + resultType + beginBasDt + endBasDt + "isinCd=" + attackAssets[x].isin;
+                let summonETF= "serviceKey=" + portalKey + "&" + "numOfRows=200&" + resultType + beginBasDt + endBasDt + "isinCd=" + attackAssets[x].isin;
                 try{
-                    let response= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
-                    let json= await response.json();
-                    let priceList= json.body.items.item;
+                    let react= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
+                    let json= await react.json();
+                    let priceList= json.response.body.items.item;
                     let nowPrice= parseInt(priceList[0].clpr);  //공공데이터 포털 참고. 당일 종가
                     let ma200 = 0; //200일 단순이동평균 (지수이동평균 아님.)
 //test
@@ -327,16 +327,18 @@ app.post("/", async function(req, res){
             for(let x= 0; x < protectAssets.length; x++){
                 //etf 정보 api 불러오기
                 //서비스키 encoding ver
-                let summonETF= "serviceKey=" + portalKey + "&" + resultType + beginBasDt + endBasDt + "isinCd=" + protectAssets[x].isin;
+                let summonETF= "serviceKey=" + portalKey + "&" + "numOfRows=180&" + resultType + beginBasDt + endBasDt + "isinCd=" + protectAssets[x].isin;
                 try{
-                    let response= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
-                    let json= await response.json();
-                    let priceList= json.body.items.item;
+                    let react= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
+                    let json= await react.json();
+                    let priceList= json.response.body.items.item;
+//test
+                    console.log('안전자산 가격 리스트= ', priceList);
                     let nowPrice= parseInt(priceList[0].clpr);  //공공데이터 포털 참고. 당일 종가
+                    console.log('지금 가격= ', nowPrice);
+                    res.send('이건 제대로 나올껄?= ' + nowPrice);
                     //6개월 전 종가
                     let sixMonthPrice= parseInt(priceList[parseInt(json.response.body.totalCount) - 1].clpr);
-//test                    
-                    console.log('안전자산 6개월 전 종가= ', nowPrice);
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;
                 }
                 catch(err){
@@ -360,6 +362,21 @@ app.post("/", async function(req, res){
                     <h5>3. ${protectAssets[2].ETFname}<h5>
                 </div>
                 </fieldset>`);
+        };
+
+        //위에 두 자산 다루기 함수를 조건이 달성됐을 경우 실행시키는 함수
+        async function chooseAssets(){
+            if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
+                console.log('6개 지표 양수여서 if안으로 진입!');
+                //지표 전부다 양수면 공격자산
+                await calculateAttack()
+                .then(() => stayPosition = false);
+            }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
+                console.log('6개 지표 음수여서 else if안으로 진입!');
+                //지표 전부다 음수면 안전자산
+                await calculateProtect()
+                .then(() => stayPosition = false);
+            };
         };
 
         //1번 누를때마다 6행씩 추가됨.
@@ -446,31 +463,23 @@ app.post("/", async function(req, res){
             console.log('변화율의 3개월 평균= ', avr3Pmi);  
         };
 
-        //2개 지수 동시에 확인.
-        await Promise.all([collectPmi(), collectSomay()])
-        .then(clear => {
-//test
+        //사실상 여기가 본체
+        try{
+            //2개 지수 동시에 확인.
+            await Promise.all([collectPmi(), collectSomay()]);
+
+//test            
             checkIfAllSame();
             //공공데이터포털 api 불러오기 준비물
             //1년 전 부터...
             beginBasDt=`beginBasDt=${lastToday}&`;
             //오늘까지 데이터
             endBasDt=`endBasDt=${finalToday}&`;
-
-            if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
-                //지표 전부다 양수면 공격자산
-                calculateAttack()
-                .then(() => stayPosition = false);
-            }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
-                //지표 전부다 음수면 안전자산
-                calculateProtect()
-                .then(() => stayPosition = false);
-            };
-        //then(promise.all)
-        })
-        .catch(err => {
+            await chooseAssets();
+        }
+        catch(err){
             console.log('error: ', err);
-        });
+        };
         //while 문 반복 횟수 체크
         let counter = 0;
         while(stayPosition){       
@@ -491,10 +500,10 @@ app.post("/", async function(req, res){
             //최신 (n 개월) 날짜 제거
             let recentYM= YearMonths.shift();
             let recentLYM= lastYearMonths.shift();
-
-            //2개 지수 동시에 확인.
-            await Promise.all([oneMonthPmi(recentYM, recentLYM), oneMonthSomay(recentYM, recentLYM)])
-            .then(() => {
+            try{
+                //2개 지수 동시에 확인.
+                await Promise.all([oneMonthPmi(recentYM, recentLYM), oneMonthSomay(recentYM, recentLYM)]);
+    
 //test
                 checkIfAllSame();
                 //공공데이터포털 api 불러오기 준비물
@@ -502,20 +511,11 @@ app.post("/", async function(req, res){
                 beginBasDt=`beginBasDt=${lastToday}&`;
                 //오늘까지 데이터
                 endBasDt=`endBasDt=${finalToday}&`;
-
-                if((toward(0) > 0 && toward(1) > 0 && toward(2) > 0) && (towardPmi(0) > 0 && towardPmi(1) > 0 && towardPmi(2) > 0)){
-                    //지표 전부다 양수면 공격자산
-                    calculateAttack()
-                    .then(() => stayPosition = false);
-                }else if((toward(0) < 0 && toward(1) < 0 && toward(2) < 0) && (towardPmi(0) < 0 && towardPmi(1) < 0 && towardPmi(2) < 0)){
-                    //지표 전부다 음수면 안전자산
-                    calculateProtect()
-                    .then(() => stayPosition = false);
-                };
-            })
-            .catch(err => {
-                console.log('while loop error: ', err);
-            });
+                await chooseAssets();
+            }
+            catch(err){
+                console.log('error: ', err);
+            };
             counter += 1;
         //while(stayPosition)
         };

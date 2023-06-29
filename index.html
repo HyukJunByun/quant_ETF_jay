@@ -8,10 +8,21 @@
 <body>
     <h1>ETF 퀀트 프로그램</h1>
     <form method="post" id="myForm">
+        <fieldset style="background-color: yellowgreen;">
+            <legend><strong>암호키:</strong></legend>
+            <div>
+                <label for="firstKey">첫번째: </label>
+                <input type="text" id="firstKey" name="firstKey" autocomplete="on">
+            </div>
+            <div>
+                <label for="secondKey">두번째: </label>
+                <input type="text" id="secondKey" name="secondKey" autocomplete="on">
+            </div>
+        </fieldset>
         <fieldset style="background-color: bisque;">
             <legend><strong>전체 자본금 (원):</strong></legend>
             <div>
-                <input type="number" id="money" value="1000000">
+                <input type="number" id="money" name="money" value="1000000">
             </div>
         </fieldset>
         <fieldset style="background-color: azure;">
@@ -40,8 +51,8 @@
         <button type="submit">결과 확인하기</button>
     </form><br>
     <hr><br>
-    <div id="quantResult"></div>
-    <script src="quantScript.js"></script>
+    <span id="quantResult"></span>
+    <!-- <script src="quantScript.js"></script> -->
     <h5>made by 안드로메다 크리쳐</h5>
 </body>
 </html>

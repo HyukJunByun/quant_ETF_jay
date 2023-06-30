@@ -215,21 +215,21 @@ app.post("/", async function(req, res){
                     //test  
                         console.log('일자별 pmi= ', pmis[llist]);
                     };
-                    //가장 최신 pmi가 발표 안된 일정일 경우. '\u00A0' = &nbsp;
-                    if(await tableList[0].evaluate(el => el.textContent) === '\u00A0'){
-                        newCounter = 1;
-                        if(w === "while"){   
-                            //최종적으로는 '더 불러오기' 1번 누를 때마다 갱신되는 6개월치 데이터 한꺼번에 불러온다.
-                            newCounter= 6 * (howManyClick() - 2);
-                            if(howManyClick() === 3){
+                    if(w === "while"){
+                        //최종적으로는 '더 불러오기' 1번 누를 때마다 갱신되는 6개월치 데이터 한꺼번에 불러온다.
+                        newCounter= 6 * (howManyClick() - 2);
+                        if(howManyClick() === 3){
+                            //가장 최신 pmi가 발표 안된 일정일 경우. '\u00A0' = &nbsp;
+                            if(await tableList[0].evaluate(el => el.textContent) === '\u00A0'){
                                 //첫 pmi 빈칸이고 while문에 처음 들어왔다면 6개월이 아니라 5개월치만 불러온다. (웹페이지 구조 문제)
                                 checkBlankFirstWhile = 5;
-                                newCounter= 6 * (howManyClick() - 2) + 1;
+                                newCounter += 1;
                             };
                         };
                     }else{
-                        if(w === "while"){   
-                            newCounter= 6 * (howManyClick() - 2);
+                        //가장 최신 pmi가 발표 안된 일정일 경우. '\u00A0' = &nbsp;
+                        if(await tableList[0].evaluate(el => el.textContent) === '\u00A0'){
+                            newCounter = 1;
                         };
                     };
                     for(let l= 0; l < checkBlankFirstWhile; l++){
@@ -251,10 +251,6 @@ app.post("/", async function(req, res){
         //전년 동기 대비 변화량 구하기
         let martsYoY= {};
         let pmiYoY = {};
-        
-        //전년 동기 대비 변화량의 3개월 평균. 총 4개 원소
-        let avr3Marts= [];
-        let avr3Pmi= [];
 
         //포지션 유지 결론 확인용
         let stayPosition = true;
@@ -277,13 +273,42 @@ app.post("/", async function(req, res){
                 delete listYoY[recentYM];
             };
         };
+
+        //전년 동기 대비 변화량의 3개월 평균. 총 4개 원소
+        let avr3Marts= [];
+        let avr3Pmi= [];
+        
+        function calculateAvr3(t, choose, w="normal"){
+            let listYoY, avr3;
+            if(choose === "marts"){
+                listYoY= martsYoY;
+                avr3= avr3Marts;
+            }
+            else if(choose === "pmi"){
+                listYoY= pmiYoY;
+                avr3= avr3Pmi;
+            };
+            //3개월 평균 구하기
+            let nowAvr= (listYoY[YearMonths[t]] + listYoY[YearMonths[t+1]] + listYoY[YearMonths[t+2]]) / 3;
+            avr3.push(nowAvr);
+            if(w === "while"){
+                //while 문에서 최신 데이터 제거
+                avr3.shift();
+            };
+            console.log('전년 대비 변화량의 3개월 평균: ', avr3);
+        };
         function avr3MonthChange(b, c){
             //3개월 평균의 전월 대비 증감 계산
             return b[c] - b[c+1];
         };
         //위에서 구한것이 3개월 연속 같은 방향성인지 확인.
-        function isAll(a){
-            //a= avr3Marts or avr3Pmi
+        function isAll(choose){
+            let a;
+            if(choose === "marts"){
+                a= avr3Marts;
+            }else if(choose === "pmi"){
+                a= avr3Pmi;
+            };
             if((avr3MonthChange(a, 0)) > 0 && (avr3MonthChange(a, 1)) > 0 && (avr3MonthChange(a, 2)) > 0){
                 return 'positive';
             }else if((avr3MonthChange(a, 0)) < 0 && (avr3MonthChange(a, 1)) < 0 && (avr3MonthChange(a, 2)) < 0){
@@ -308,25 +333,6 @@ app.post("/", async function(req, res){
             for(let i=0; i < 3; i++){
                 console.log(avr3MonthChange(avr3Pmi, i));
             };
-        };
-        function calculateAvr3(t, choose, w="normal"){
-            let listYoY, avr3;
-            if(choose === "marts"){
-                listYoY= martsYoY;
-                avr3= avr3Marts;
-            }
-            else if(choose === "pmi"){
-                listYoY= pmiYoY;
-                avr3= avr3Pmi;
-            };
-            //3개월 평균 구하기
-            let nowAvr= (listYoY[YearMonths[t]] + listYoY[YearMonths[t+1]] + listYoY[YearMonths[t+2]]) / 3;
-            avr3.push(nowAvr);
-            if(w === "while"){
-                //while 문에서 최신 데이터 제거
-                avr3.shift();
-            };
-            console.log('전년 대비 변화량의 3개월 평균: ', avr3);
         };
         async function average3MonthData(choose, w= "normal"){
             try{
@@ -469,12 +475,12 @@ app.post("/", async function(req, res){
 
         //위에 두 자산 다루기 함수를 조건이 달성됐을 경우 실행시키는 함수
         async function chooseAssets(){
-            if(isAll(avr3Marts) === 'positive' && isAll(avr3Pmi) === 'positive'){
+            if(isAll("marts") === 'positive' && isAll("pmi") === 'positive'){
                 console.log('6개 지표 양수여서 if안으로 진입!');
                 //지표 전부다 양수면 공격자산
                 await calculateAttack()
                 .then(() => stayPosition = false);
-            }else if(isAll(avr3Marts) === 'negative' && isAll(avr3Pmi) === 'negative'){
+            }else if(isAll("marts") === 'negative' && isAll("pmi") === 'negative'){
                 console.log('6개 지표 음수여서 else if안으로 진입!');
                 //지표 전부다 음수면 안전자산
                 await calculateProtect()
@@ -509,8 +515,8 @@ app.post("/", async function(req, res){
             catch(err){
                 console.log('main 함수 error: ', err);
             };
-        await mainFunc();
         };
+        await mainFunc();
         while(stayPosition){   
             //while 문 반복 횟수 체크
             counter += 1;    

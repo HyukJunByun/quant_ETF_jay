@@ -441,10 +441,9 @@ app.post("/", async function(req, res){
                     let react= await fetch("https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo?" + summonETF);
                     let json= await react.json();
                     let priceList= json.response.body.items.item;
-//test
-                    console.log('안전자산 가격 리스트= ', priceList);
+                    //console.log('안전자산 가격 리스트= ', priceList);
                     let nowPrice= parseInt(priceList[0].clpr);  //공공데이터 포털 참고. 당일 종가
-                    console.log('지금 가격= ', nowPrice);
+                    console.log(protectAssets[x], '의 지금 가격= ', nowPrice);
                     //6개월 전 종가
                     let sixMonthPrice= parseInt(priceList[parseInt(json.response.body.totalCount) - 1].clpr);
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;

@@ -322,10 +322,6 @@ app.post("/", async function(req, res){
         //공공데이터포털 api 불러오기 준비물
         //데이터를 json 형태로 반환
         const resultType= "resultType=json&";
-        //1년 전 부터...
-        let beginBasDt=`beginBasDt=${lastToday}&`;
-        //오늘까지 데이터
-        let endBasDt=`endBasDt=${finalToday}&`;
 //test
         function checkIfAllSame(){
             console.log('아래 6개 지표 전부 양수 또는 음수. 아니면 포지션 유지');
@@ -353,9 +349,8 @@ app.post("/", async function(req, res){
                 };
                 //변화량의 3개월 연속 평균을 구한다.
                 for(let t=t_w; t < 4; t++){
-                    calculateAvr3(t, choose, w);
+                    calculateAvr3(t, choose, w);                        
                 };
-                console.log(choose, '의 전년 대비 변화량의 3개월 평균: ', avr3);
             }
             catch(err){
                 console.log('스위칭전략2 pmi/marts 최종 계산 오류: ', err.message);
@@ -369,6 +364,13 @@ app.post("/", async function(req, res){
                 {ETFname: 'TIGER 차이나CSI300', isin: 'KR7192090009'},
                 {ETFname: 'KODEX 미국S&P 500(H)', isin: 'KR7449180009'}
             ];
+            //공공데이터포털 api 불러오기 준비물
+            //1년 전 부터...
+            let beginBasDt=`beginBasDt=${lastToday}&`;
+            //오늘까지 데이터
+            let endBasDt=`endBasDt=${finalToday}&`;
+            console.log('주가 정보 불러올 오늘 날짜=', finalToday);
+            console.log('주가 정보 불러올 6개월 전 날짜=', sixToday);
             for(let x=0; x < attackAssets.length; x++){
                 //etf 정보 api 불러오기
                 //서비스키 둘 중에 하나 아직 확정 안남. 테스트 필요.
@@ -433,11 +435,13 @@ app.post("/", async function(req, res){
                 let sixMonth= ('0' + (parseInt(month) - 6)).slice(-2);
                 sixToday= year + sixMonth + day;
             };
-
-//test
-            console.log('6개월 전= ', sixToday);
-
-            beginBasDt=`beginBasDt=${sixToday}&`;
+            //공공데이터포털 api 불러오기 준비물
+            //6개월 전 부터...
+            let beginBasDt=`beginBasDt=${sixToday}&`;
+            //오늘까지 데이터
+            let endBasDt=`endBasDt=${finalToday}&`;
+            console.log('주가 정보 불러올 오늘 날짜=', finalToday);
+            console.log('주가 정보 불러올 6개월 전 날짜=', sixToday);
             for(let x= 0; x < protectAssets.length; x++){
                 //etf 정보 api 불러오기
                 //서비스키 encoding ver
@@ -480,12 +484,17 @@ app.post("/", async function(req, res){
         async function chooseAssets(){
             if(isAll("marts") === 'positive' && isAll("pmi") === 'positive'){
                 console.log('6개 지표 양수여서 if안으로 진입!');
+                //과거에서 조건을 만족한 자산이어도, 종목 선택은 현재 주가로 계산한다.
+                today = new Date();  
+                getTime();
                 //지표 전부다 양수면 공격자산
                 await calculateAttack()
                 .then(() => stayPosition = false);
             }else if(isAll("marts") === 'negative' && isAll("pmi") === 'negative'){
                 console.log('6개 지표 음수여서 else if안으로 진입!');
                 //지표 전부다 음수면 안전자산
+                today = new Date();  
+                getTime();
                 await calculateProtect()
                 .then(() => stayPosition = false);
             };
@@ -508,11 +517,6 @@ app.post("/", async function(req, res){
                 await Promise.all([average3MonthData("marts", w), average3MonthData("pmi", w)]);
     //test            
                 checkIfAllSame();
-                //공공데이터포털 api 불러오기 준비물
-                //1년 전 부터...
-                beginBasDt=`beginBasDt=${lastToday}&`;
-                //오늘까지 데이터
-                endBasDt=`endBasDt=${finalToday}&`;
                 await chooseAssets();
             }
             catch(err){

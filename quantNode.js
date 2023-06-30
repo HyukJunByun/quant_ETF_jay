@@ -257,17 +257,19 @@ app.post("/", async function(req, res){
 
         function calculateYoY(m, choose, w="normal"){
             let myList, listYoY;
-            let thisYearData = parseFloat(myList[YearMonths[m]]);
-            let lastYearData= parseFloat(myList[lastYearMonths[m]]);
             if(choose === "marts"){
                 myList= marts;
                 listYoY= martsYoY;
+                let thisYearData = parseFloat(myList[YearMonths[m]]);
+                let lastYearData= parseFloat(myList[lastYearMonths[m]]);
                 //marts= 변화율(%)을 사용한다.
                 listYoY[YearMonths[m]]= thisYearData / lastYearData - 1;
             }
             else if(choose === "pmi"){
                 myList= pmis;
                 listYoY= pmiYoY;
+                let thisYearData = parseFloat(myList[YearMonths[m]]);
+                let lastYearData= parseFloat(myList[lastYearMonths[m]]);
                 //pmi= 단순 지수 차이를 사용한다.
                 listYoY[YearMonths[m]]= thisYearData - lastYearData;
             };

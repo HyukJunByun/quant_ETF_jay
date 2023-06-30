@@ -148,7 +148,7 @@ app.post("/", async function(req, res){
                     console.log('미국 소매판매지수 목록= ', marts);
                 }
                 catch(err){
-                    console.log("미국 소매판매지수 불러오기 실패= ", err.message);
+                    console.log("(스위칭전략2)미국 소매판매지수 불러오기 실패= ", err.message);
                 };
             }else if(choose === "pmi"){
             //pmi 지수 모으기
@@ -241,7 +241,7 @@ app.post("/", async function(req, res){
                     console.log('pmi: ', pmis);
                 }
                 catch(err){
-                    console.log("pmi 불러오기 실패= ", err.message);
+                    console.log("(스위칭전략2)pmi 불러오기 실패= ", err.message);
                 };  
             //else if pmi
             };
@@ -256,17 +256,17 @@ app.post("/", async function(req, res){
         let stayPosition = true;
 
         function calculateYoY(m, choose, w="normal"){
-            let list, listYoY;
+            let myList, listYoY;
             if(choose === "marts"){
-                list= marts;
+                myList= marts;
                 listYoY= martsYoY;
             }
             else if(choose === "pmi"){
-                list= pmis;
+                myList= pmis;
                 listYoY= pmiYoY;
             };
-            let thisYearData = parseFloat(list[YearMonths[m]]);
-            let lastYearData= parseFloat(list[lastYearMonths[m]]);
+            let thisYearData = parseFloat(myList[YearMonths[m]]);
+            let lastYearData= parseFloat(myList[lastYearMonths[m]]);
             listYoY[YearMonths[m]]= thisYearData / lastYearData - 1;
             if(w === "while"){
                 //while 문에서 최신 데이터 제거
@@ -343,7 +343,6 @@ app.post("/", async function(req, res){
                 };
                 //지표 데이터 모아서...
                 await collectData(choose, w);
-                console.log("pmi 또는 미국 소매판매지수= ", list);
                 //전년 동기 대비 변화량을 구하고...
                 for(let h=h_w; h < YearMonths.length; h++){
                     calculateYoY(h, choose, w);
@@ -354,7 +353,7 @@ app.post("/", async function(req, res){
                 };
             }
             catch(err){
-                console.log('전년 대비 변화량의 3개월 평균 구하기 실패: ', err.message);
+                console.log('스위칭전략2 pmi/marts 최종 계산 오류: ', err.message);
             };
         };
         async function calculateAttack(){
@@ -386,7 +385,7 @@ app.post("/", async function(req, res){
                     attackAssets[x]['momentum']= st_momentum;
                 }
                 catch(err){
-                    console.log("공격자산 etf 오류: ", err.message);
+                    console.log("스위칭전략2 공격자산 etf 오류: ", err.message);
                 };
             };
             //위의 fetch를 공격자산에 대하여 총 3번 반복.
@@ -451,7 +450,7 @@ app.post("/", async function(req, res){
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;
                 }
                 catch(err){
-                    console.log("안전자산 etf 오류: ", err.message);
+                    console.log("스위칭전략2 안전자산 etf 오류: ", err.message);
                 };
             };
             //수익률 높은 순으로 내림차순 배열
@@ -513,7 +512,7 @@ app.post("/", async function(req, res){
                 await chooseAssets();
             }
             catch(err){
-                console.log('main 함수 error: ', err);
+                console.log('스위칭전략2 main 함수 error: ', err);
             };
         };
         await mainFunc();

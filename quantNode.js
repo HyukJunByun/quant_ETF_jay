@@ -257,17 +257,20 @@ app.post("/", async function(req, res){
 
         function calculateYoY(m, choose, w="normal"){
             let myList, listYoY;
+            let thisYearData = parseFloat(myList[YearMonths[m]]);
+            let lastYearData= parseFloat(myList[lastYearMonths[m]]);
             if(choose === "marts"){
                 myList= marts;
                 listYoY= martsYoY;
+                //marts= 변화율(%)을 사용한다.
+                listYoY[YearMonths[m]]= thisYearData / lastYearData - 1;
             }
             else if(choose === "pmi"){
                 myList= pmis;
                 listYoY= pmiYoY;
+                //pmi= 단순 지수 차이를 사용한다.
+                listYoY[YearMonths[m]]= thisYearData - lastYearData;
             };
-            let thisYearData = parseFloat(myList[YearMonths[m]]);
-            let lastYearData= parseFloat(myList[lastYearMonths[m]]);
-            listYoY[YearMonths[m]]= thisYearData / lastYearData - 1;
             if(w === "while"){
                 //while 문에서 최신 데이터 제거
                 delete listYoY[recentYM];
@@ -295,7 +298,6 @@ app.post("/", async function(req, res){
                 //while 문에서 최신 데이터 제거
                 avr3.shift();
             };
-            console.log('전년 대비 변화량의 3개월 평균: ', avr3);
         };
         function avr3MonthChange(b, c){
             //3개월 평균의 전월 대비 증감 계산
@@ -351,6 +353,7 @@ app.post("/", async function(req, res){
                 for(let t=t_w; t < 4; t++){
                     calculateAvr3(t, choose, w);
                 };
+                console.log(choose, '의 전년 대비 변화량의 3개월 평균: ', avr3);
             }
             catch(err){
                 console.log('스위칭전략2 pmi/marts 최종 계산 오류: ', err.message);
@@ -443,7 +446,7 @@ app.post("/", async function(req, res){
                     let priceList= json.response.body.items.item;
                     //console.log('안전자산 가격 리스트= ', priceList);
                     let nowPrice= parseInt(priceList[0].clpr);  //공공데이터 포털 참고. 당일 종가
-                    console.log(protectAssets[x], '의 지금 가격= ', nowPrice);
+                    console.log(protectAssets[x].ETFname, '의 지금 가격= ', nowPrice);
                     //6개월 전 종가
                     let sixMonthPrice= parseInt(priceList[parseInt(json.response.body.totalCount) - 1].clpr);
                     protectAssets[x]['profit']= nowPrice / sixMonthPrice - 1;

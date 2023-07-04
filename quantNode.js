@@ -178,7 +178,9 @@ app.post("/", async function(req, res){
                         //(중요) 여기 기기마다 다름!!
                         //웹페이지 시각적으로 보고 싶으면 활성화
                         //headless: false,
-                        executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'  
+                        executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'
+                        //github codespace에서 실행할때는 executablePath 자체를 지우면 된다. 아니면 밑에 주석 해제
+                        //executablePath: '/usr/bin/chromium'
                     });
                     let page = await browser.newPage();
             
@@ -545,6 +547,8 @@ app.post("/", async function(req, res){
     };
     if(laaDualCheck === 'on'){
         //laa + dual 전략
+
+    //laa.checked
     };
 
     //최종 결과 출력
